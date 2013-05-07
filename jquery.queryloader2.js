@@ -50,6 +50,7 @@
     var qLpercentage = "";
     var qLimageCounter = 0;
     var qLstart = 0;
+    var qLHasLayout = true;
 
     var qLoptions = {
         onComplete: function () {},
@@ -58,9 +59,11 @@
         overlayId: 'qLoverlay',
         barHeight: 1,
         percentage: false,
+        percentageItem: null,
         deepSearch: true,
         completeAnimation: "fade",
         minimumTime: 500,
+        onProgress: function(ratio) {},
         onLoadComplete: function () {
             if (qLoptions.completeAnimation == "grow") {
                 var animationTime = 500;
@@ -83,11 +86,13 @@
                         })
                     });
                 });
-            } else {
+            } else if (qLoptions.completeAnimation == "fade") {
                 $('#'+qLoptions.overlayId).fadeOut(500, function () {
                     $('#'+qLoptions.overlayId).remove();
                     qLoptions.onComplete();
                 });
+            } else {
+                qLoptions.onComplete();
             }
         }
     };
@@ -100,7 +105,11 @@
 
         if (qLimages.length > 0) {
             createPreloadContainer();
-            createOverlayLoader();
+            if(qLHasLayout) {
+                createOverlayLoader();
+            } else if(qLoptions.percentage == true) {
+                createPercentage();
+            }
         } else {
             //no images == instant exit
             destroyQueryLoader();
@@ -140,10 +149,15 @@
         qLdone++;
 
         var percentage = (qLdone / qLimageCounter) * 100;
-        $(qLbar).stop().animate({
-            width: percentage + "%",
-            minWidth: percentage + "%"
-        }, 200);
+
+        if(qLHasLayout) {
+            $(qLbar).stop().animate({
+                width: percentage + "%",
+                minWidth: percentage + "%"
+            }, 200);
+        }
+
+        qLoptions.onProgress(qLdone / qLimageCounter);
 
         if (qLoptions.percentage == true) {
             $(qLpercentage).text(Math.ceil(percentage) + "%");
@@ -180,6 +194,17 @@
             top: "50%"
         }).appendTo(qLoverlay);
         if (qLoptions.percentage == true) {
+            createPercentage();
+        }
+        if ( !qLimages.length) {
+        	destroyQueryLoader()
+        }
+    };
+
+    var createPercentage = function () {
+        if(qLoptions.percentageItem != null) {
+            qLpercentage = $(qLoptions.percentageItem).text("0%");
+        } else {
             qLpercentage = $("<div id='qLpercentage'></div>").text("0%").css({
                 height: "40px",
                 width: "100px",
@@ -192,9 +217,6 @@
                 marginLeft: "-50px",
                 color: qLoptions.barColor
             }).appendTo(qLoverlay);
-        }
-        if ( !qLimages.length) {
-        	destroyQueryLoader()
         }
     };
 
@@ -231,6 +253,7 @@
         if(options) {
             $.extend(qLoptions, options );
         }
+        qLHasLayout = qLoptions.completeAnimation != "none";
 
         this.each(function() {
             findImageInElement(this);
